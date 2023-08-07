@@ -20,13 +20,12 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
 
-
       - name: Install pyinstaller
         run: pip install pyinstaller
 
       - name: Build Linux executable
-        run: pyinstaller --onefile --windowed scanman/main.py
-        # Replace 'scanman/main.py' with the path to your main.py file
+        run: pyinstaller --onefile --windowed main.py
+
 
       - name: Create Release
         id: create_release
