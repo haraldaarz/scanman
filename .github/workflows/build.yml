@@ -1,0 +1,48 @@
+name: Build ELF for Linux and Create Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.11'  # Replace '3.x' with your desired Python version
+
+    - name: Install dependencies
+      run: pip install -r requirements.txt  # If you have any dependencies
+
+    - name: Build Python package
+      run: python setup.py sdist bdist_wheel
+
+    - name: Install build tools
+      run: sudo apt-get update && sudo apt-get install -y build-essential
+
+    - name: Build ELF executable
+      run: |
+        pip install pyinstaller
+        pyinstaller --onefile main.py
+
+    - name: Create GitHub Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: v0.0.2  # Replace with your desired tag/version number
+        release_name: Release 0.0.2  # Replace with your desired release name
+        body: |
+          Beta beta beta version for a soon to be large scanning tool.
+
+    - name: Upload Linux ELF executable
+      id: upload-artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: your_script-linux-executable
+        path: scanman  # Replace 'your_script' with the name of the compiled executable

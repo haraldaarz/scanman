@@ -14,3 +14,4 @@ GUI Interface for vulnerability scanning
 - Spørsmål om man vi lagre/slette outout filer når man lokker programmet
     - Kan være i preferences
 - Fjerne stjerne (*) import
+- Installere depedencies (nmap)
