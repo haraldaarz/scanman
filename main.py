@@ -1,45 +1,59 @@
 import sys
 import subprocess
+from datetime import datetime
 from PyQt6.QtWidgets import *
 
 class Window(QMainWindow):
     def __init__(self):
         super().__init__(parent=None)
         self.setWindowTitle("Scanman")
-        central_widget = QWidget()  # Create a central widget
-        self.setCentralWidget(central_widget)  # Set the central widget for the main window
 
-        dialogLayout = QVBoxLayout(central_widget)  # Set the layout for the central widget
-        formLayout = QFormLayout()
+        # Create a central widget
+        central_widget = QWidget()
+        self.setCentralWidget(central_widget)
+        self.setGeometry(0, 0, 850, 500)
+
+
+        # Create the layout for the central widget
+        self.dialogLayout = QVBoxLayout(central_widget)
 
         title_label = QLabel("<h1>Scanman</h1>")
         subtitle_label = QLabel("<h3>The comprehensive network discovery tool</h3>")
-        dialogLayout.addWidget(title_label)
-        dialogLayout.addWidget(subtitle_label)
+        self.dialogLayout.addWidget(title_label)
+        self.dialogLayout.addWidget(subtitle_label)
 
         # Create input fields and store references to them as instance variables
         self.ip_address_input = QLineEdit()
         self.ports_input = QLineEdit()
         self.rate_input = QLineEdit()
+        formLayout = QFormLayout()
         formLayout.addRow("IP address:", self.ip_address_input)
         formLayout.addRow("Ports:", self.ports_input)
         formLayout.addRow("Rate:", self.rate_input)
-        dialogLayout.addLayout(formLayout)
+        self.dialogLayout.addLayout(formLayout)
 
         buttons = QDialogButtonBox()
         buttons.setStandardButtons(
             QDialogButtonBox.StandardButton.Cancel
             | QDialogButtonBox.StandardButton.Ok
         )
-
         buttons.accepted.connect(self.buttonOK_clicked)
         buttons.rejected.connect(self.buttonCancel_clicked)
-        dialogLayout.addWidget(buttons)
+        self.dialogLayout.addWidget(buttons)
+
+        # Initialize the QTabWidget
+        self.tab_widget = QTabWidget()
+        self.dialogLayout.addWidget(self.tab_widget)
+
+        # Create a QLabel for the status bar
+        self.status_label = QLabel("Status: Idle")
+        self.statusBar().addWidget(self.status_label)
+
 
         self._createMenu()
         self._createToolBar()
         self._createStatusBar()
-
+        
     def buttonOK_clicked(self):
         ip_address = self.ip_address_input.text()
         ports = self.ports_input.text()
@@ -54,19 +68,23 @@ class Window(QMainWindow):
 
         try:
             # Construct the nmap command
-            nmap_cmd = ["nmap", "-p", ports, "--min-rate", rate, "-oG", "scan_output.txt", ip_address]
 
+            now = datetime.now()
+            dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
+            filename = "scan_output-" + dt_string + ".txt"
+            nmap_cmd = ["nmap", "-p", ports, "--min-rate", rate, "--stats-every", "1s", "-oG", filename, ip_address]
 
-            # Execute the nmap command and capture the output
             result = subprocess.run(nmap_cmd, capture_output=True, text=True)
 
-            # Print the nmap output
-            #print(result.stdout)
 
             # Open a new tab with the contents of the output file
-            with open("scan_output.txt", "r") as file:
+            with open(filename, "r") as file:
                 output_data = file.read()
                 self.create_output_tab(output_data)
+
+            #QMessageBox.information(self, "Scan complete", "The scan is complete.")
+            
+
 
         except subprocess.CalledProcessError as e:
             QMessageBox.warning(self, "Error", f"An error occurred: {e}")
@@ -75,14 +93,19 @@ class Window(QMainWindow):
             QMessageBox.warning(self, "Error", f"An unexpected error occurred: {e}")
 
 
-        # When the scan is complete, stop the subprocess
-
-
-
 
     def create_output_tab(self, content):
         # Create a new tab and add a text area to display the content
-        pass
+        results_tab = QWidget()
+        results_layout = QVBoxLayout()
+        text_edit = QTextEdit()
+        text_edit.setPlainText(content)
+        results_layout.addWidget(text_edit)
+        results_tab.setLayout(results_layout)
+
+        # Add the results tab to the tab widget
+        self.tab_widget.addTab(results_tab, "Results")
+
 
     def buttonCancel_clicked(self):
         message = QMessageBox()
@@ -98,7 +121,7 @@ class Window(QMainWindow):
 
     def _createMenu(self):
         menu = self.menuBar().addMenu("&Menu")
-       # menu.addAction("&Exit", self.close)
+        menu.addAction("&Exit", self.close)
         menu.addAction("&Load config", self.close)
         menu.addAction("&Save config", self.close)
         
@@ -114,7 +137,8 @@ class Window(QMainWindow):
 
     def _createToolBar(self):
         tools = QToolBar()
-        tools.addAction("Exit", self.close)
+       # tools.addAction("Exit", self.close)
+
         self.addToolBar(tools)
 
     def _createStatusBar(self):
