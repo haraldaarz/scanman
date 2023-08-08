@@ -64,7 +64,7 @@ class Window(QMainWindow):
 
 
         self._createMenu()
-        self._createToolBar()
+        #self._createToolBar()
         self._createStatusBar()
         
     def buttonOK_clicked(self):
@@ -174,11 +174,11 @@ class Window(QMainWindow):
         settings_menu.addAction("&About")
         
 
-    def _createToolBar(self):
-        tools = QToolBar()
+   # def _createToolBar(self):
+    #    tools = QToolBar()
        # tools.addAction("Exit", self.close)
 
-        self.addToolBar(tools)
+   #     self.addToolBar(tools)
 
     def _createStatusBar(self):
         status = QStatusBar()
