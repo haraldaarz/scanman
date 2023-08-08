@@ -44,3 +44,5 @@ Once you have the application running, you can use it to perform scans. Follow t
 - **Efficient Keyboard Interaction:** Initiate scans using the Return key for quicker navigation.
 - **Code Optimization:** Remove unnecessary star (*) imports to ensure a cleaner codebase.
 - **Fix Freeze Bug:** Fix the bug that causes the application to freeze when a large scan is performed.
+    - Thread for Nmap scan
+

@@ -1,9 +1,12 @@
 import sys
 import subprocess
 import os
+import threading
+from threading import Thread
 # import ipaddress
 # import socket
 from datetime import datetime
+from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import *
 
 class Window(QMainWindow):
@@ -28,11 +31,14 @@ class Window(QMainWindow):
         self.ip_address_input = QLineEdit()
         self.ports_input = QLineEdit()
         self.rate_input = QLineEdit()
+        self.extra_input = QLineEdit()
         formLayout = QFormLayout()
         formLayout.addRow("IP address:", self.ip_address_input)
         formLayout.addRow("Ports:", self.ports_input)
         formLayout.addRow("Rate:", self.rate_input)
+        formLayout.addRow("Extra arguments:", self.extra_input)
         self.rate_input.setPlaceholderText("Optional")
+        self.extra_input.setPlaceholderText("Optional")
         self.dialogLayout.addLayout(formLayout)
 
         # Create checkboxes for either a TCP or UDP scan. Only one can be selected at a time, and the default is TCP. Make the boxes right next to each other.
@@ -55,9 +61,6 @@ class Window(QMainWindow):
         self.dialogLayout.addLayout(checkbox_layout)
 
 
-
-    
-
         buttons = QDialogButtonBox()
         buttons.setStandardButtons(
             QDialogButtonBox.StandardButton.Cancel
@@ -74,11 +77,10 @@ class Window(QMainWindow):
         # Create a QLabel for the status bar
         self.status_label = QLabel("Status: Idle")
         self.statusBar().addWidget(self.status_label)
-
+        self.status_bar = self.statusBar()  # Store the status bar instance
 
         self._createMenu()
-        #self._createToolBar()
-        self._createStatusBar()
+
         
     def buttonOK_clicked(self):
         ip_address = self.ip_address_input.text()
@@ -86,21 +88,17 @@ class Window(QMainWindow):
         rate = self.rate_input.text()
         protocol = "TCP" if self.tcp_checkbox.isChecked() else "UDP"
         vuln_scan = self.vuln_checkbox.isChecked()
-
+        extra = self.extra_input.text()
 
         # Validate input (you may want to add further validation logic)
         if not ip_address or not ports:
             QMessageBox.warning(self, "Input Error", "Please fill in IP and ports.")
             return
-   
 
         try:
-            # Construct the nmap command
-
             now = datetime.now()
             dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
             filename = "scan_output-" + dt_string + ".txt"
-    
             nmap_cmd = ["nmap", "-sV", "-p", ports, "--stats-every", "1s", "-oG", filename]
 
             if rate:
@@ -114,6 +112,9 @@ class Window(QMainWindow):
             else:
                 nmap_cmd.extend(["-sU", ip_address])
 
+            if extra:
+                nmap_cmd.extend(extra.split())
+
             result = subprocess.run(nmap_cmd, capture_output=True, text=True)
 
             # Open a new tab with the contents of the output file
@@ -121,15 +122,12 @@ class Window(QMainWindow):
                 output_data = file.read()
                 self.create_output_tab(output_data, ip_address)
 
-            #QMessageBox.information(self, "Scan complete", "The scan is complete.")
-
 
         except subprocess.CalledProcessError as e:
             QMessageBox.warning(self, "Error", f"An error occurred: {e}")
 
         except Exception as e:
             QMessageBox.warning(self, "Error", f"An unexpected error occurred: {e}")
-
 
 
     def create_output_tab(self, content, ip_address):
@@ -148,8 +146,6 @@ class Window(QMainWindow):
     def buttonCancel_clicked(self):
         # TODO
         pass
-
-
 
 
     def closeEvent(self, event):
@@ -193,7 +189,6 @@ class Window(QMainWindow):
         menu.addAction("&Load config", self.close)
         menu.addAction("&Save config", self.close)
         
-
         edit_menu = self.menuBar().addMenu("&Edit")
         edit_menu.addAction("&Undo")
         edit_menu.addAction("&Redo")
@@ -202,12 +197,6 @@ class Window(QMainWindow):
         settings_menu.addAction("&Preferences")
         settings_menu.addAction("&About")
         
-
-   # def _createToolBar(self):
-    #    tools = QToolBar()
-       # tools.addAction("Exit", self.close)
-
-   #     self.addToolBar(tools)
 
     def _createStatusBar(self):
         status = QStatusBar()
