@@ -1,5 +1,6 @@
 import sys
 import subprocess
+import os
 # import ipaddress
 # import socket
 from datetime import datetime
@@ -37,13 +38,25 @@ class Window(QMainWindow):
         # Create checkboxes for either a TCP or UDP scan. Only one can be selected at a time, and the default is TCP. Make the boxes right next to each other.
         self.tcp_checkbox = QCheckBox("TCP")
         self.udp_checkbox = QCheckBox("UDP")
+        self.vuln_checkbox = QCheckBox("Vulnerability Scan")
         self.tcp_checkbox.setChecked(True) # Set TCP default
-        self.tcp_checkbox.toggled.connect(lambda: self.udp_checkbox.setChecked(not self.tcp_checkbox.isChecked())) # Toggle the other checkbox when this one is clicked
-        self.udp_checkbox.toggled.connect(lambda: self.tcp_checkbox.setChecked(not self.udp_checkbox.isChecked())) # The same for the other checkbox
+
+        # Both tcp and udp cant be checked at the same time, and vuln scan can only be checked if tcp is checked
+        self.tcp_checkbox.toggled.connect(lambda: self.udp_checkbox.setChecked(False))
+        self.udp_checkbox.toggled.connect(lambda: self.tcp_checkbox.setChecked(False))
+        self.tcp_checkbox.toggled.connect(lambda: self.vuln_checkbox.setEnabled(self.tcp_checkbox.isChecked()))
+        self.udp_checkbox.toggled.connect(lambda: self.vuln_checkbox.setEnabled(self.tcp_checkbox.isChecked()))
+
+        # Add the checkboxes to a horizontal layout
         checkbox_layout = QHBoxLayout()
         checkbox_layout.addWidget(self.tcp_checkbox)
         checkbox_layout.addWidget(self.udp_checkbox)
+        checkbox_layout.addWidget(self.vuln_checkbox)
         self.dialogLayout.addLayout(checkbox_layout)
+
+
+
+    
 
         buttons = QDialogButtonBox()
         buttons.setStandardButtons(
@@ -72,6 +85,7 @@ class Window(QMainWindow):
         ports = self.ports_input.text()
         rate = self.rate_input.text()
         protocol = "TCP" if self.tcp_checkbox.isChecked() else "UDP"
+        vuln_scan = self.vuln_checkbox.isChecked()
 
 
         # Validate input (you may want to add further validation logic)
@@ -87,12 +101,18 @@ class Window(QMainWindow):
             dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
             filename = "scan_output-" + dt_string + ".txt"
     
+            nmap_cmd = ["nmap", "-sV", "-p", ports, "--stats-every", "1s", "-oG", filename]
+
             if rate:
-                if protocol == "TCP": nmap_cmd = ["nmap", "-sV", "-p", ports, "--min-rate", rate, "--stats-every", "1s", "-oG", filename, ip_address]
-                else: nmap_cmd = ["nmap", "-sU", "-p", ports, "--min-rate", rate, "--stats-every", "1s", "-oG", filename, ip_address]
+                nmap_cmd.extend(["--min-rate", rate])
+
+            if vuln_scan:
+                nmap_cmd.extend(["--script=vulners"])
+
+            if protocol == "TCP":
+                nmap_cmd.append(ip_address)
             else:
-                if protocol == "TCP": nmap_cmd = ["nmap", "-sV", "-p", ports, "--stats-every", "1s", "-oG", filename, ip_address]
-                else: nmap_cmd = ["nmap", "-sU", "-p", ports, "--stats-every", "1s", "-oG", filename, ip_address]
+                nmap_cmd.extend(["-sU", ip_address])
 
             result = subprocess.run(nmap_cmd, capture_output=True, text=True)
 
@@ -126,37 +146,46 @@ class Window(QMainWindow):
 
 
     def buttonCancel_clicked(self):
+        # TODO
         pass
 
 
 
 
-    # if exit button is clicked, ask if user wants to exit
     def closeEvent(self, event):
-        message = QMessageBox()
-        message.setMinimumSize(700, 700)
-        message.setWindowTitle("Scanman")
-
-
-        # if a result tab is open, ask if user wants to save the results file, then exit
         if self.tab_widget.count() > 0:
+            message = QMessageBox()
+            message.setMinimumSize(700, 700)
+            message.setWindowTitle("Scanman")
             message.setText("Would you like to save the results?")
-            message.setStandardButtons(QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No)
+            message.setStandardButtons(
+                QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No
+            )
             message.setDefaultButton(QMessageBox.StandardButton.Yes)
             message.setIcon(QMessageBox.Icon.Warning)
             x = message.exec()
-            if x == QMessageBox.StandardButton.Yes:
-                self.save_results()
+            if x == QMessageBox.StandardButton.Yes: # if yes
+                current_tab_index = self.tab_widget.currentIndex() # get current tab index
+                current_tab = self.tab_widget.widget(current_tab_index) # get current tab
+                text_edit = current_tab.layout().itemAt(0).widget() # get text edit widget
+                self.save_results(text_edit.toPlainText()) # save the results of the text edit widget to a file, using the save_results function
                 event.accept()
             else:
                 event.accept()
-                # delete the results file
-                # os.remove("scan_output.txt")
+                # TODO: Delete the output files
 
 
-    def save_results(self):
-        pass
+    def save_results(self, content):
+        file_name, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save Results",
+            "",
+            "Text Files (*.txt);;All Files (*)"
+        )
 
+        if file_name:
+            with open(file_name, "w") as file:
+                file.write(content)
 
     def _createMenu(self):
         menu = self.menuBar().addMenu("&Menu")
