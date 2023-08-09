@@ -1,13 +1,66 @@
 import sys
 import subprocess
 import os
-import threading
-from threading import Thread
+from PyQt6.QtCore import QTimer, QThread, pyqtSignal
 # import ipaddress
 # import socket
 from datetime import datetime
-from PyQt6.QtCore import QTimer
 from PyQt6.QtWidgets import *
+
+
+class NmapScanner(QThread):
+    scanFinished = pyqtSignal(str, str)  # Custom signal to indicate scan completion
+    statusUpdate = pyqtSignal(str)  # Define the statusUpdate signal
+
+    def __init__(self, ip_address, ports, rate, protocol, vuln_scan, extra):
+        super().__init__()
+        self.ip_address = ip_address
+        self.ports = ports
+        self.rate = rate
+        self.protocol = protocol
+        self.vuln_scan = vuln_scan
+        self.extra = extra
+
+
+    def run(self):
+        try:
+            now = datetime.now()
+            dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
+            filename = "scan_output-" + dt_string + ".txt"
+            nmap_cmd = ["nmap", "-sV", "-p", self.ports, "--stats-every", "1s", "-oG", filename]
+
+            if self.rate:
+                nmap_cmd.extend(["--min-rate", self.rate])
+
+            if self.vuln_scan:
+                nmap_cmd.extend(["--script=vulners"])
+
+            if self.protocol == "TCP":
+                nmap_cmd.append(self.ip_address)
+            else:
+                nmap_cmd.extend(["-sU", self.ip_address])
+
+            if self.extra:
+                nmap_cmd.extend(self.extra.split())
+
+            # Use subprocess.Popen to capture real-time output
+            result = subprocess.Popen(nmap_cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
+
+            # Emit status updates as they're received
+            for line in iter(result.stdout.readline, ''):
+                self.statusUpdate.emit(line.strip())
+                if result.poll() is not None:
+                    break
+
+            # Emit the signal to indicate scan completion and pass the IP address and filename
+            self.scanFinished.emit(self.ip_address, filename)
+
+        except subprocess.CalledProcessError as e:
+            print(f"An error occurred: {e}")
+
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+
 
 class Window(QMainWindow):
     def __init__(self):
@@ -74,14 +127,11 @@ class Window(QMainWindow):
         self.tab_widget = QTabWidget()
         self.dialogLayout.addWidget(self.tab_widget)
 
-        # Create a QLabel for the status bar
-        self.status_label = QLabel("Status: Idle")
-        self.statusBar().addWidget(self.status_label)
-        self.status_bar = self.statusBar()  # Store the status bar instance
 
         self._createMenu()
+        self._createStatusBar()
 
-        
+
     def buttonOK_clicked(self):
         ip_address = self.ip_address_input.text()
         ports = self.ports_input.text()
@@ -95,39 +145,19 @@ class Window(QMainWindow):
             QMessageBox.warning(self, "Input Error", "Please fill in IP and ports.")
             return
 
-        try:
-            now = datetime.now()
-            dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
-            filename = "scan_output-" + dt_string + ".txt"
-            nmap_cmd = ["nmap", "-sV", "-p", ports, "--stats-every", "1s", "-oG", filename]
+        # Create an instance of the NmapScanner class and connect its signal to a slot
+        self.nmap_thread = NmapScanner(ip_address, ports, rate, protocol, vuln_scan, extra)
+        self.nmap_thread.scanFinished.connect(self.handle_scan_finished)
 
-            if rate:
-                nmap_cmd.extend(["--min-rate", rate])
+        self.nmap_thread.statusUpdate.connect(self.update_status_bar)
 
-            if vuln_scan:
-                nmap_cmd.extend(["--script=vulners"])
+        # Start the scan in a separate thread
+        self.nmap_thread.start()
 
-            if protocol == "TCP":
-                nmap_cmd.append(ip_address)
-            else:
-                nmap_cmd.extend(["-sU", ip_address])
-
-            if extra:
-                nmap_cmd.extend(extra.split())
-
-            result = subprocess.run(nmap_cmd, capture_output=True, text=True)
-
-            # Open a new tab with the contents of the output file
-            with open(filename, "r") as file:
-                output_data = file.read()
-                self.create_output_tab(output_data, ip_address)
-
-
-        except subprocess.CalledProcessError as e:
-            QMessageBox.warning(self, "Error", f"An error occurred: {e}")
-
-        except Exception as e:
-            QMessageBox.warning(self, "Error", f"An unexpected error occurred: {e}")
+    def handle_scan_finished(self, ip_address, filename):
+        with open(filename, "r") as file:
+            output_data = file.read()
+            self.create_output_tab(output_data, ip_address)
 
 
     def create_output_tab(self, content, ip_address):
@@ -198,11 +228,12 @@ class Window(QMainWindow):
         settings_menu.addAction("&About")
         
 
-    def _createStatusBar(self):
-        status = QStatusBar()
-        status.showMessage("Status progess: Running?")
-        self.setStatusBar(status)
+    def update_status_bar(self, status_text):
+        self.status_label.setText(f"Status: {status_text}")
 
+    def _createStatusBar(self):
+        self.status_label = QLabel("Status: Idle")
+        self.statusBar().addWidget(self.status_label)
 
 if __name__ == "__main__":
     app = QApplication([])

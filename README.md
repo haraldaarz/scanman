@@ -36,13 +36,11 @@ Once you have the application running, you can use it to perform scans. Follow t
 
 ## Planned Features
 
-- **Progress Bar:** Visualize the scan progress with a dynamic progress bar for improved user experience.
 - **Compact Layout:** Rearrange the TCP and UDP scan buttons.
 - **Custom Port Selection:** Scan specific ranges of ports by selecting custom top 10, 100, and 1000 port configurations.
 - **Color-coded Output:** Enhance scan result readability by using color codes to distinguish different types of output.
 - **Enhanced Error Handling:** Improve detection of incorrectly entered IP addresses, reducing user errors.
 - **Efficient Keyboard Interaction:** Initiate scans using the Return key for quicker navigation.
 - **Code Optimization:** Remove unnecessary star (*) imports to ensure a cleaner codebase.
-- **Fix Freeze Bug:** Fix the bug that causes the application to freeze when a large scan is performed.
-    - Thread for Nmap scan
+- **Update sceenshot.png:** Update the screenshot.
 
