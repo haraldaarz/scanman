@@ -1,9 +1,6 @@
 import sys
 import subprocess
-import os
-from PyQt6.QtCore import QTimer, QThread, pyqtSignal
-# import ipaddress
-# import socket
+from PyQt6.QtCore import QThread, pyqtSignal
 from datetime import datetime
 from PyQt6.QtWidgets import *
 
@@ -60,6 +57,25 @@ class NmapScanner(QThread):
 
         except Exception as e:
             print(f"An unexpected error occurred: {e}")
+
+
+    def masscan_discovery(self):
+
+        now = datetime.now()
+        dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
+        filename = "scan_output-" + dt_string + ".txt"
+        masscan_cmd = ["masscan", "-p", self.ports, "--rate", self.rate, "-oL", filename]
+
+        subprocess.run(masscan_cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+    def nmap_on_Masscan_results(self):
+
+        # if the user launches a masscan scan, it will be prompted to launch an nmap scan on the results, using the run function
+        
+        # from the masscan results, we need to extract the ip addresses and ports
+        # then we need to run the nmap scan on each ip address and port
+        pass
+        
 
 
 class Window(QMainWindow):
@@ -154,6 +170,8 @@ class Window(QMainWindow):
         # Start the scan in a separate thread
         self.nmap_thread.start()
 
+
+
     def handle_scan_finished(self, ip_address, filename):
         with open(filename, "r") as file:
             output_data = file.read()
@@ -234,6 +252,9 @@ class Window(QMainWindow):
     def _createStatusBar(self):
         self.status_label = QLabel("Status: Idle")
         self.statusBar().addWidget(self.status_label)
+
+
+
 
 if __name__ == "__main__":
     app = QApplication([])

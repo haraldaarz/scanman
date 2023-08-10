@@ -37,6 +37,7 @@ Once you have the application running, you can use it to perform scans. Follow t
 ## Planned Features
 
 - **Compact Layout:** Rearrange the TCP and UDP scan buttons.
+- **Masscan implementation:** Implement the Masscan tool for faster scans.
 - **Custom Port Selection:** Scan specific ranges of ports by selecting custom top 10, 100, and 1000 port configurations.
 - **Color-coded Output:** Enhance scan result readability by using color codes to distinguish different types of output.
 - **Enhanced Error Handling:** Improve detection of incorrectly entered IP addresses, reducing user errors.
